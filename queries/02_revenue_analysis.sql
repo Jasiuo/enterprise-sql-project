@@ -199,3 +199,48 @@ cot.CustomerType2,
 COUNT(*) as ClientsCount
 FROM CstmrOrderType cot
 GROUP BY cot.CustomerType2;
+
+WITH PrvOrders AS (
+    SELECT 
+        soh.CustomerID,
+        soh.OrderDate,
+        LAG(soh.OrderDate) OVER (PARTITION BY soh.CustomerID ORDER BY soh.OrderDate) AS PreviousOrderDate
+    FROM SalesLT.SalesOrderHeader soh
+),
+DateSinceLast AS (
+SELECT
+    po.CustomerID,
+    DATEDIFF(DAY, po.PreviousOrderDate, po.OrderDate) AS DaysBetweenOrders
+FROM PrvOrders po
+WHERE PreviousOrderDate IS NOT NULL
+),
+MedianCalc AS(
+    SELECT
+    CustomerId,
+    DaysBetweenOrders,
+    PERCENTILE_CONT(0.5) 
+        WITHIN GROUP (ORDER BY DaysBetweenOrders) OVER (PARTITION BY CustomerId) AS MedianGap
+    FROM DateSinceLast
+),
+
+CustomerStats AS (
+SELECT
+    CustomerId,
+    AVG(DaysBetweenOrders) AS AvgGap,
+    MAX(DaysBetweenOrders) AS MaxGap,
+    MAX(MedianGap) AS MedianGap
+FROM MedianCalc
+GROUP BY CustomerId
+)
+SELECT
+    CustomerId,
+    AvgGap,
+    MedianGap,
+    CASE 
+        WHEN AvgGap <= 7 THEN 'Highly Engaged (0-7 days)'
+        WHEN AvgGap <= 30 THEN 'Engaged (8-30 days)'
+        ELSE 'At Risk (>30 days)'
+    END AS RecencySegment
+    FROM CustomerStats;
+
+

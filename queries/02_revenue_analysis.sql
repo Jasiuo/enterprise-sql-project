@@ -127,3 +127,75 @@ SELECT
     END AS RevenueSegment
 FROM CumulativePct
 ORDER BY Revenue DESC;
+
+WITH DailyRev AS (
+SELECT
+    soh.OrderDate As OrderDate,
+    SUM(soh.SubTotal) AS RevenuePerDay,
+    SUM(soh.TotalDue) AS TotalSalePerDay
+FROM SalesLT.SalesOrderHeader soh
+GROUP BY soh.OrderDate
+
+)
+SELECT
+    dr.OrderDate,
+    dr.RevenuePerDay,
+    AVG(dr.RevenuePerDay) OVER (
+        ORDER BY dr.OrderDate
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS RollingAverage
+FROM DailyRev dr
+ORDER BY dr.OrderDate;
+
+WITH FirstOrders AS (
+    SELECT
+    soh.CustomerId,
+    soh.SubTotal,
+    soh.OrderDate,
+    MIN(soh.OrderDate) OVER (PARTITION BY soh.CustomerID) AS FirstOrderDate
+    FROM SalesLT.SalesOrderHeader soh
+
+),
+CstmrType AS(
+    SELECT
+    fo.CustomerId,
+    fo.SubTotal,
+    CASE 
+        WHEN fo.OrderDate = fo.FirstOrderDate THEN 'New'
+        ELSE 'Returning'
+        END AS CustomerType
+    FROM FirstOrders fo
+)
+SELECT 
+    c.CustomerType,
+    SUM(c.SubTotal) AS Revenue,
+    AVG(c.Subtotal) AS AvgOrderValue,
+    COUNT(*) AS TotalOrders,
+    CAST (
+    SUM(c.SubTotal) * 100.0
+    / SUM(SUM(c.SubTotal)) OVER () AS DECIMAL(5,2)) AS CustomerTypeRatio
+FROM CstmrType c
+GROUP BY c.CustomerType;
+
+WITH CstmrOrdersCount AS (
+    SELECT 
+        soh.CustomerID,
+        COUNT(*) as Orders
+    FROM SalesLT.SalesOrderHeader soh
+    GROUP BY soh.CustomerID
+),
+CstmrOrderType AS (
+    SELECT
+    coc.CustomerID,
+    coc.Orders,
+    CASE
+        WHEN coc.Orders = 1 THEN 'SingleOrderCustomer'
+        ELSE 'MultiOrderCustomer'
+    END AS CustomerType2
+    FROM CstmrOrdersCount coc
+)
+SELECT 
+cot.CustomerType2,
+COUNT(*) as ClientsCount
+FROM CstmrOrderType cot
+GROUP BY cot.CustomerType2;

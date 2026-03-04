@@ -1,16 +1,15 @@
 1. Project Title: Enterprise SQL Analytics Project - Customer Revenue & Pareto Analysis
-   
-3. Author: Jan Radek
+   Author: Jan Radek
 
-4. Project Overwiew
+2. Project Overwiew
   My project focuses on revenue analysis using SQL on the AdventureWorksLT database. The goal was to analyze customer revenue distribution, identify key revenue drives and apply Pareto (ABC) segmentation using SQL techniques such as CTEs and window functions.
 
-5. Dataset
+3. Dataset
   Database: AdventureWorksLT
   Schema: SalesLT
   Key tables: "SalesOrderHeader" soh, "Customer" c
 
-6. Technical scope:
+4. Technical scope:
   -Aggregations (including SUM, AVG, COUNT)
   -GROUP BY
   -CTE
